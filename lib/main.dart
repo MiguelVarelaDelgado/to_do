@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'hero_dialog_route.dart';
+import 'app_todo_Popup_card.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -13,40 +14,42 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.grey,
       ),
-      home: const MyHomePage(title: 'TO_DO_LIST'),
+      home: MyHomePage(title: '// TO_DO:'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+  MyHomePage({Key? key, required this.title}) : super(key: key);
+
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
-class ToDoItemModel {
+class ToDoItem {
   String text;
   int order;
   bool checked;
 
-  ToDoItemModel(this.text, {required this.order, this.checked: false});
+  ToDoItem(this.text, {required this.order, this.checked: false});
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<ToDoItemModel> items = [
-    ToDoItemModel('A', order: 0, checked: true),
-    ToDoItemModel('B', order: 1),
-    ToDoItemModel('C', order: 2),
+  List<ToDoItem> items = [
+    ToDoItem('A', order: 0),
+    ToDoItem('B', order: 1),
+    ToDoItem('C', order: 2),
   ];
-  updateList(e) {
+
+  updateList() {
     setState(() {
-      List<ToDoItemModel> checkeds =
+      List<ToDoItem> checkeds =
           this.items.where((element) => element.checked).toList();
       checkeds.sort((a, b) => a.order - b.order);
 
-      List<ToDoItemModel> uncheckeds =
+      List<ToDoItem> uncheckeds =
           this.items.where((element) => !element.checked).toList();
       uncheckeds.sort((a, b) => a.order - b.order);
 
@@ -55,51 +58,153 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  final textCtrl = TextEditingController();
+
+  openPopupCard(void Function(String) onSave) {
+    Navigator.of(context).push(HeroDialogRoute(
+      builder: (context) {
+        return AddTodoPopupCard(
+          textCtrl: textCtrl,
+          onSave: (text) {
+            onSave(text);
+            updateList();
+            textCtrl.text = '';
+            Navigator.of(context).pop();
+          },
+        );
+      },
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        /*actions: [
-          IconButton(onPressed: () {}, icon: Icon(Icons.notifications))
-        ],*/
         title: Text(widget.title),
-        toolbarHeight: 100,
+        toolbarHeight: 180,
       ),
       body: ListView(
         children: [
           ...this.items.map((e) => ListTile(
-                leading: Checkbox(
-                  checkColor: Colors.green,
-                  onChanged: (e) {},
-                  value: e.checked,
-                ),
-                title: Opacity(
-                  opacity: e.checked ? 0.5 : 1,
-                  child: Text(
-                    e.text,
-                    style: TextStyle(
-                      color: e.checked ? Colors.grey.shade500 : Colors.black,
-                      decoration: e.checked ? TextDecoration.lineThrough : null,
-                    ),
+              leading: Checkbox(
+                checkColor: Colors.transparent,
+                activeColor: Colors.grey.shade400,
+                onChanged: (e) {},
+                value: e.checked,
+              ),
+              title: Opacity(
+                opacity: e.checked ? 0.5 : 1,
+                child: Text(
+                  e.text,
+                  style: TextStyle(
+                    color: e.checked ? Colors.grey.shade500 : Colors.black,
+                    decoration: e.checked ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                trailing: IconButton(
-                    onPressed: () {
-                      print("More icon");
-                    },
-                    icon: Icon(Icons.more_vert)),
-                onTap: () {
-                  e.checked = !e.checked;
-                  updateList(e);
+              ),
+              trailing: PopupMenuButton<String>(
+                onSelected: (t) {
+                  switch (t) {
+                    case 'editar':
+                      this.textCtrl.text = e.text;
+                      openPopupCard((text) {
+                        this
+                            .items
+                            .firstWhere((element) => element.order == e.order)
+                            .text = text;
+                      });
+                      break;
+                    case 'borrar':
+                      this
+                          .items
+                          .removeWhere((element) => element.order == e.order);
+                      updateList();
+                      break;
+                  }
                 },
-              )),
+                icon: Icon(Icons.more_vert),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(5)),
+                  side: BorderSide(color: Color(0x99FFFFFF), width: 2),
+                ),
+                itemBuilder: (context) {
+                  return [
+                    PopupMenuItem<String>(
+                      value: 'editar',
+                      height: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Icon(Icons.edit, color: Colors.white),
+                          Text(
+                            'Editar',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuDivider(
+                      height: 8,
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'borrar',
+                      height: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Icon(Icons.delete, color: Colors.red),
+                          Text(
+                            'Borrar',
+                            style: TextStyle(color: Colors.red),
+                          )
+                        ],
+                      ),
+                    ),
+                  ];
+                },
+                color: Colors.grey.shade700,
+              ),
+              onTap: () {
+                e.checked = !e.checked;
+                updateList();
+              })),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(right: 14.0),
+        child: GestureDetector(
+          onTap: () => openPopupCard((text) => items.add(ToDoItem(text,
+              order: items
+                      .reduce((value, element) =>
+                          element.order > value.order ? element : value)
+                      .order +
+                  1))),
+          child: Hero(
+            tag: 'add-todo-hero',
+            child: Material(
+              color: Colors.grey.shade800,
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(32),
+                  side: const BorderSide(
+                    width: 3,
+                    color: Color(0x99FFFFFF),
+                  )),
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
